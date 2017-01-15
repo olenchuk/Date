@@ -12,7 +12,7 @@ use Date::Calc qw(
 
 __PACKAGE__->mk_accessors(qw(
                               type intervals direction span sliding_window
-                              start_dow start_dow_name
+                              start_dow start_dow_name start_dom start_moy
                               today_date error print_format
                             ));
 
@@ -48,6 +48,7 @@ sub get_dates {
     unless (scalar @last) {
         return ();
     }
+
     my $start_date = $self->_array_to_date(@start);
     my $end_date = $self->_array_to_date(@end);
     my $last_date = $self->_array_to_date(@last);
@@ -106,7 +107,7 @@ sub get_span {
     return $self->span;
 }
 
-sub set_start_dow {
+sub set_start_day_of_week {
     my ($self, $start_dow) = @_;
     $start_dow = uc($start_dow);
     my %valid_dow = (
@@ -129,9 +130,43 @@ sub set_start_dow {
     }
 }
 
-sub get_start_dow {
+sub get_start_day_of_week {
     my $self = shift;
     return $self->start_dow;
+}
+
+sub set_start_day_of_month {
+    my ($self, $start_dom) = @_;
+    return 0 unless $start_dom;
+    if ($start_dom =~ /^\d+$/ and $start_dom >= 1 and $start_dom <= 28) {
+        $self->start_dom($start_dom);
+    } else {
+        $self->set_error("Invalid start day of month, \"$start_dom\"");
+        return 0;
+    }
+    return 1;
+}
+
+sub get_start_day_of_month {
+    my $self = shift;
+    return $self->start_dom;
+}
+
+sub set_start_month_of_year {
+    my ($self, $start_moy) = @_;
+    return 0 unless $start_moy;
+    if ($start_moy =~ /^\d+$/ and $start_moy >= 1 and $start_moy <= 12) {
+        $self->start_moy($start_moy);
+    } else {
+        $self->set_error("Invalid start day of month, \"$start_moy\"");
+        return 0;
+    }
+    return 1;
+}
+
+sub get_start_month_of_year {
+    my $self = shift;
+    return $self->start_moy;
 }
 
 sub set_today_date {
@@ -205,7 +240,9 @@ sub _set_default_parameters {
     my $self = shift;
     $self->set_intervals(1);
     $self->set_span(1);
-    $self->set_start_dow('MONDAY');
+    $self->set_start_day_of_week('MONDAY');
+    $self->set_start_day_of_month(1);
+    $self->set_start_month_of_year(1);
     $self->_set_print_format('%04d-%02d-%02d');
     $self->set_today_date();
     $self->set_sliding_window(0);
@@ -216,13 +253,19 @@ sub _set_default_parameters {
 sub _set_passed_parameters {
     my $self = shift;
     my $hash = shift;
-    $self->set_type($hash->{type})                      if exists $hash->{type};
-    $self->set_intervals($hash->{intervals})            if exists $hash->{intervals};
-    $self->set_span($hash->{span})                      if exists $hash->{span};
-    $self->set_start_dow($hash->{start_dow})            if exists $hash->{start_dow};
-    $self->set_today_date($hash->{today_date})          if exists $hash->{today_date};
-    $self->set_sliding_window($hash->{sliding_window})  if exists $hash->{sliding_window};
-    $self->set_direction($hash->{direction})            if exists $hash->{direction};
+    $self->set_type($hash->{type})             if exists $hash->{type};
+    $self->set_intervals($hash->{intervals})   if exists $hash->{intervals};
+    $self->set_span($hash->{span})             if exists $hash->{span};
+    $self->set_today_date($hash->{today_date}) if exists $hash->{today_date};
+    $self->set_direction($hash->{direction})   if exists $hash->{direction};
+    $self->set_start_day_of_week($hash->{start_day_of_week})
+        if exists $hash->{start_day_of_week};
+    $self->set_sliding_window($hash->{sliding_window})
+        if exists $hash->{sliding_window};
+    $self->set_start_day_of_month($hash->{start_day_of_month})
+       if exists $hash->{start_day_of_month};
+    $self->set_start_month_of_year($hash->{start_month_of_year})
+         if exists $hash->{start_month_of_year};
 }
 
 sub _get_start_date {
@@ -268,17 +311,26 @@ sub _start_reference {
     my @start = $self->get_today_date;
     my $type = $self->get_type;
     if ($type eq 'YEAR') {
-        @start[1,2] = (1,1);
+        my $start_moy = $self->get_start_month_of_year;
+        if ($start_moy > $start[1]) {
+            @start = $self->_add_delta_ymd(@start,(-1,0,0));
+        }
+        $start[1] = $start_moy;
+        $start[2] = 1;
     } elsif ($type eq 'QUARTER') {
         $start[1] -= ( ( $start[1] - 1 ) % 3 );
         $start[2] = 1;
     } elsif ($type eq 'MONTH') {
-        $start[2] = 1;
+        my $start_dom = $self->get_start_day_of_month;
+        if ($start_dom > $start[2]) {
+            @start = $self->_add_delta_ymd(@start,(0,-1,0));
+        }
+        $start[2] = $start_dom;
     } elsif ($type eq 'WEEK') {
         ## Calculate the "Monday" of the current week, and add the number of days to get to
         ## desired start date.  If that start day-of-week is "after" the "current" day-of-week,
         ## that start date will be in the future.  Will need to subtract a week.
-        my $start_dow = $self->get_start_dow;
+        my $start_dow = $self->get_start_day_of_week;
         my $today_dow = Day_of_Week(@start);
         @start = $self->_add_delta_ymd(Monday_of_Week(Week_of_Year(@start)),(0,0,$start_dow - 1));
         ## NEED MORE HERE _ this is just "monday" at this point
@@ -376,16 +428,13 @@ sub _add_delta_ymd {
 
 =head1 NAME
 
-Date::Range - Generate start/end dates easily
+Date::Range - Generate start/end dates easily, based on type (year, month,...),
+number of consecutive entities ("4 months"), number of intervals from the current date,
+and direction (past/future).
 
 =head1 VERSION
 
 1.0
-
-=head1 NOTES
-
-Make separate function for Add_Delta_YMD - checking to make sure it'll work.
-Consider setting global error state?
 
 =head1 SYNOPSIS
 
@@ -403,13 +452,17 @@ Consider setting global error state?
     
     $dr->set_span(n);
     
-    $dr->set_start_dow([ MONDAY | TUESDAY | ...]);
-    
     $dr->set_sliding_window([ 0 | 1 ]);
     
-    $dr->set_today_date('YYYY-MM-DD');
-    
     $dr->set_direction([ '+' | '-' ]);
+    
+    $dr->set_start_day_of_week([ MONDAY | TUESDAY | ...]);
+    
+    $dr->set_start_day_of_month([ 1, 2, 3, ... 28 ]);
+    
+    $dr->set_start_month_of_year([ 1, 2, 3, ... 12 ]);
+    
+    $dr->set_today_date('YYYY-MM-DD');
     
     $dr->get_error();
 
@@ -465,12 +518,28 @@ unit of type.  If sliding window is not set, each interval back will slide by (s
 
 =item
 
-start_dow - For type = WEEK, the day which should be used at the first day of the week (SUNDAY, MONDAY, ...) - default = MONDAY
+direction - If set to "-", each positive value for "intervals" goes further into the past, and each negative value for "intervals"
+goes further into the future.  If set to "+", the opposite applies.
 
 =item
 
-direction - If set to "-", each positive value for "intervals" goes further into the past, and each negative value for "intervals"
-goes further into the future.  If set to "+", the opposite applies.
+start_day_of_week - For type = WEEK, the day which should be used as the first day of the week (SUNDAY, MONDAY, ...) - default = MONDAY
+
+=item
+
+start_day_of_month - For type = MONTH, the day which should be used as the start date of the month.  Valid values are 1..28.
+Date::Calc is used for these calculations.  If adding/subtracting months, and the day component of the start month is greater
+than the number of days in the resulting month (ex, "Feb 30"), Date::Calc extends the calculation into the following month ("Mar 2").
+To prevent confusion, Date::Range only supports start_dom of 1 to 28.
+
+=item
+
+start_month_of_year - For type = YEAR, the month which should be used as the first day of the year.  Valid values are 1..12.
+This would be applicable for fiscal years, which do not always start with I<January>.
+
+=item
+
+today_date - Overrides the current date, typically for development/test purposes.
 
 =back
 
@@ -484,7 +553,6 @@ span = 2.  Notice in each case, "interval=1" is one unit away from the one conta
 =begin html
 
 <pre>
-
 
 Direction = "-", sliding window = 0
      -3| -2| -1| C | 1 | 2 | 3 
@@ -513,7 +581,6 @@ Direction = "+", sliding window = 1
 -1)    |   |xxx|xxx|   |   |   
  0)    |   |   |xxx|xxx|   |   
  1)    |   |   |   |xxx|xxx|   
-
 
 </pre>
 
@@ -580,9 +647,13 @@ Number of intervals to move back/forth from the current interval.  Default = 1.
 
 Number of I<type> to include in the range.  Default = 1.
 
-=item start_dow => [ I<MONDAY | TUESDAY | WEDNESDAY | ...> ]
+=item start_day_of_week => [ I<MONDAY | TUESDAY | WEDNESDAY | ...> ]
 
 For I<type = WEEK>, the day to denote the first day of the week.  Default = MONDAY.
+
+=item start_day_of_month => [ I<1, 2, 3...28> ]
+
+For I<type = MONTH>, the day to denote the first day of the month.  Default = 1.
 
 =item sliding_window => [ I<O | 1> ]
 
@@ -617,33 +688,46 @@ Any of the parameters set in I<new> may be set/overridden here.
 
 Each of the parameters may be set/restrieved using set_I<param> / get_I<param> methods.
 
-=over 4
 
-=item
+=head3 set_intervals / get_intervals
 
-set_intervals / get_intervals
+Interval type: [ I<YEAR | QUARTER | MONTH | WEEK | DAY> ].  No default - must be specified.
 
-=item
+=head3 set_span / get_span
 
-set_span / get_span
+Overrides the ranges running only one year/quarter/month/week/day at a time.  Default = 1.
 
-=item
+=head3 set_start_day_of_week / get_start_day_of_week
 
-set_start_dow / get_start_dow
+For weekly ranges, defines the starting day to be used for the week, [ I<MONDAY | TUESDAY | WEDNESDAY | ...> ].
+Default = Monday.
 
-=item
+=head3 set_start_day_of_month / get_start_day_of_month
 
-set_today_date / get_today_date
+For monthly ranges, defines the starting day to be used for the month.  Only supported values are 1-28, as 
+months with less than 31 days may yield results unexpected by the end user.  Default = 1.
 
-=item
+=head3 set_start_month_of_year / get_start_month_of_year
 
-set_sliding_window / get_sliding_window
+For yearly ranges, defiens the starting month to be used.  The starting day is fixed at 1.  Default = 1 (January)..
 
-=item
+=head3 set_today_date / get_today_date
 
-set_direction / get_direction
+By default, the current date is used.  This can be overridden, for development/test purposes.
+Format must be YYYY-MM-DD.
 
-=back
+=head3 set_sliding_window / get_sliding_window
+
+Applicable if span > 1.  Determines whether successive intervals move an entire span, or just a single
+amount of type.  For instance, if type = MONTH and span = 5, should each successive value of I<intervals>
+advance one month at a time, or five months at a time.  Default = 0 ("five months at a time").
+
+=head3 set_direction / get_direction
+
+The direction which successive intervals progresses. This allows for positive values of I<interval>, whether
+looking into the past, or into the future.  To get date ranges which are further into the past, recommend
+setting direction to "-".  If date ranges in the future are required, recommend setting direction to "+".
+Default = "-".  Refer to the Illustrations section for examples.
 
 =head2 get_error
 
@@ -718,7 +802,7 @@ All parameters can be set at instantiation, set distinctly, or passed in with ge
 
 =head1 DIAGNOSTICS
 
-Any errors detected may be retrieved via I<$dr->get_errors>.  Errors are accumulated as they are encountered.
+Any errors detected may be retrieved via I<$dr-E<gt>get_errors>.  Errors are accumulated as they are encountered.
 They are cleared only when I<$dr->clear_errors> is invoked.
 
 =head1 DEPENDENCIES
@@ -731,15 +815,29 @@ L<Date::Calc>
 
 T. Olenchuk
 
-=head1 LICENSE AND COPYRIGHT
+=head1 LICENSE / COPYRIGHT / DISCLAIMER
 
+This is free software, you may use it and distribute it under the same terms as Perl itself.
+There is no warranty of any kind, either expressed or implied.
 
 =head1 LIMITATIONS
 
+=over 4
+
+=item
+
 The only allowed format for returned dates is 'YYYY-MM-DD'.  
 
-=head1 DISCLAIMER
+=item
 
-This package is licensed free of charge.  There is no warranty of any kind, either expressed or implied.
+"Start day-of-month" is only valid only for values 1-28.  This was to avoid trying to use last-day-of-month,
+which becomes problematic for days with less than 31 days.  Arguments could be made that, "one month after
+the last day of January" is Feb 28, or March 3, or even March 4 on a leap year.
+
+=item
+
+Any date calculations not supported by Date::Calc are not supported here, such as "3000 years ago".
+
+=back
 
 =cut

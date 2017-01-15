@@ -14,7 +14,6 @@
 <ul id="index">
   <li><a href="#NAME">NAME</a></li>
   <li><a href="#VERSION">VERSION</a></li>
-  <li><a href="#NOTES">NOTES</a></li>
   <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
   <li><a href="#DESCRIPTION">DESCRIPTION</a>
     <ul>
@@ -25,7 +24,18 @@
     <ul>
       <li><a href="#new">new</a></li>
       <li><a href="#get_dates">get_dates</a></li>
-      <li><a href="#Accessors">Accessors</a></li>
+      <li><a href="#Accessors">Accessors</a>
+        <ul>
+          <li><a href="#set_intervals-get_intervals">set_intervals / get_intervals</a></li>
+          <li><a href="#set_span-get_span">set_span / get_span</a></li>
+          <li><a href="#set_start_day_of_week-get_start_day_of_week">set_start_day_of_week / get_start_day_of_week</a></li>
+          <li><a href="#set_start_day_of_month-get_start_day_of_month">set_start_day_of_month / get_start_day_of_month</a></li>
+          <li><a href="#set_start_month_of_year-get_start_month_of_year">set_start_month_of_year / get_start_month_of_year</a></li>
+          <li><a href="#set_today_date-get_today_date">set_today_date / get_today_date</a></li>
+          <li><a href="#set_sliding_window-get_sliding_window">set_sliding_window / get_sliding_window</a></li>
+          <li><a href="#set_direction-get_direction">set_direction / get_direction</a></li>
+        </ul>
+      </li>
       <li><a href="#get_error">get_error</a></li>
       <li><a href="#clear_error">clear_error</a></li>
     </ul>
@@ -34,22 +44,17 @@
   <li><a href="#DIAGNOSTICS">DIAGNOSTICS</a></li>
   <li><a href="#DEPENDENCIES">DEPENDENCIES</a></li>
   <li><a href="#AUTHOR">AUTHOR</a></li>
-  <li><a href="#LICENSE-AND-COPYRIGHT">LICENSE AND COPYRIGHT</a></li>
+  <li><a href="#LICENSE-COPYRIGHT-DISCLAIMER">LICENSE / COPYRIGHT / DISCLAIMER</a></li>
   <li><a href="#LIMITATIONS">LIMITATIONS</a></li>
-  <li><a href="#DISCLAIMER">DISCLAIMER</a></li>
 </ul>
 
 <h1 id="NAME">NAME</h1>
 
-<p>Date::Range - Generate start/end dates easily</p>
+<p>Date::Range - Generate start/end dates easily, based on type (year, month,...), number of consecutive entities (&quot;4 months&quot;), number of intervals from the current date, and direction (past/future).</p>
 
 <h1 id="VERSION">VERSION</h1>
 
 <p>1.0</p>
-
-<h1 id="NOTES">NOTES</h1>
-
-<p>Make separate function for Add_Delta_YMD - checking to make sure it&#39;ll work. Consider setting global error state?</p>
 
 <h1 id="SYNOPSIS">SYNOPSIS</h1>
 
@@ -67,13 +72,17 @@
     
     $dr-&gt;set_span(n);
     
-    $dr-&gt;set_start_dow([ MONDAY | TUESDAY | ...]);
-    
     $dr-&gt;set_sliding_window([ 0 | 1 ]);
     
-    $dr-&gt;set_today_date(&#39;YYYY-MM-DD&#39;);
-    
     $dr-&gt;set_direction([ &#39;+&#39; | &#39;-&#39; ]);
+    
+    $dr-&gt;set_start_day_of_week([ MONDAY | TUESDAY | ...]);
+    
+    $dr-&gt;set_start_day_of_month([ 1, 2, 3, ... 28 ]);
+    
+    $dr-&gt;set_start_month_of_year([ 1, 2, 3, ... 12 ]);
+    
+    $dr-&gt;set_today_date(&#39;YYYY-MM-DD&#39;);
     
     $dr-&gt;get_error();</code></pre>
 
@@ -116,10 +125,19 @@
 <li><p>sliding_window - Applicable if span &gt; 1. If sliding_window is set, each interval back will slide by one unit of type. If sliding window is not set, each interval back will slide by (span) units of type. - default = 0</p>
 
 </li>
-<li><p>start_dow - For type = WEEK, the day which should be used at the first day of the week (SUNDAY, MONDAY, ...) - default = MONDAY</p>
+<li><p>direction - If set to &quot;-&quot;, each positive value for &quot;intervals&quot; goes further into the past, and each negative value for &quot;intervals&quot; goes further into the future. If set to &quot;+&quot;, the opposite applies.</p>
 
 </li>
-<li><p>direction - If set to &quot;-&quot;, each positive value for &quot;intervals&quot; goes further into the past, and each negative value for &quot;intervals&quot; goes further into the future. If set to &quot;+&quot;, the opposite applies.</p>
+<li><p>start_day_of_week - For type = WEEK, the day which should be used as the first day of the week (SUNDAY, MONDAY, ...) - default = MONDAY</p>
+
+</li>
+<li><p>start_day_of_month - For type = MONTH, the day which should be used as the start date of the month. Valid values are 1..28. Date::Calc is used for these calculations. If adding/subtracting months, and the day component of the start month is greater than the number of days in the resulting month (ex, &quot;Feb 30&quot;), Date::Calc extends the calculation into the following month (&quot;Mar 2&quot;). To prevent confusion, Date::Range only supports start_dom of 1 to 28.</p>
+
+</li>
+<li><p>start_month_of_year - For type = YEAR, the month which should be used as the first day of the year. Valid values are 1..12. This would be applicable for fiscal years, which do not always start with <i>January</i>.</p>
+
+</li>
+<li><p>today_date - Overrides the current date, typically for development/test purposes.</p>
 
 </li>
 </ul>
@@ -196,10 +214,16 @@ Direction = "+", sliding window = 1
 <p>Number of <i>type</i> to include in the range. Default = 1.</p>
 
 </dd>
-<dt id="start_dow-MONDAY-TUESDAY-WEDNESDAY">start_dow =&gt; [ <i>MONDAY | TUESDAY | WEDNESDAY | ...</i> ]</dt>
+<dt id="start_day_of_week-MONDAY-TUESDAY-WEDNESDAY">start_day_of_week =&gt; [ <i>MONDAY | TUESDAY | WEDNESDAY | ...</i> ]</dt>
 <dd>
 
 <p>For <i>type = WEEK</i>, the day to denote the first day of the week. Default = MONDAY.</p>
+
+</dd>
+<dt id="start_day_of_month-1-2-3...28">start_day_of_month =&gt; [ <i>1, 2, 3...28</i> ]</dt>
+<dd>
+
+<p>For <i>type = MONTH</i>, the day to denote the first day of the month. Default = 1.</p>
 
 </dd>
 <dt id="sliding_window-O-1">sliding_window =&gt; [ <i>O | 1</i> ]</dt>
@@ -236,27 +260,37 @@ Direction = "+", sliding window = 1
 
 <p>Each of the parameters may be set/restrieved using set_<i>param</i> / get_<i>param</i> methods.</p>
 
-<ul>
+<h3 id="set_intervals-get_intervals">set_intervals / get_intervals</h3>
 
-<li><p>set_intervals / get_intervals</p>
+<p>Interval type: [ <i>YEAR | QUARTER | MONTH | WEEK | DAY</i> ]. No default - must be specified.</p>
 
-</li>
-<li><p>set_span / get_span</p>
+<h3 id="set_span-get_span">set_span / get_span</h3>
 
-</li>
-<li><p>set_start_dow / get_start_dow</p>
+<p>Overrides the ranges running only one year/quarter/month/week/day at a time. Default = 1.</p>
 
-</li>
-<li><p>set_today_date / get_today_date</p>
+<h3 id="set_start_day_of_week-get_start_day_of_week">set_start_day_of_week / get_start_day_of_week</h3>
 
-</li>
-<li><p>set_sliding_window / get_sliding_window</p>
+<p>For weekly ranges, defines the starting day to be used for the week, [ <i>MONDAY | TUESDAY | WEDNESDAY | ...</i> ]. Default = Monday.</p>
 
-</li>
-<li><p>set_direction / get_direction</p>
+<h3 id="set_start_day_of_month-get_start_day_of_month">set_start_day_of_month / get_start_day_of_month</h3>
 
-</li>
-</ul>
+<p>For monthly ranges, defines the starting day to be used for the month. Only supported values are 1-28, as months with less than 31 days may yield results unexpected by the end user. Default = 1.</p>
+
+<h3 id="set_start_month_of_year-get_start_month_of_year">set_start_month_of_year / get_start_month_of_year</h3>
+
+<p>For yearly ranges, defiens the starting month to be used. The starting day is fixed at 1. Default = 1 (January)..</p>
+
+<h3 id="set_today_date-get_today_date">set_today_date / get_today_date</h3>
+
+<p>By default, the current date is used. This can be overridden, for development/test purposes. Format must be YYYY-MM-DD.</p>
+
+<h3 id="set_sliding_window-get_sliding_window">set_sliding_window / get_sliding_window</h3>
+
+<p>Applicable if span &gt; 1. Determines whether successive intervals move an entire span, or just a single amount of type. For instance, if type = MONTH and span = 5, should each successive value of <i>intervals</i> advance one month at a time, or five months at a time. Default = 0 (&quot;five months at a time&quot;).</p>
+
+<h3 id="set_direction-get_direction">set_direction / get_direction</h3>
+
+<p>The direction which successive intervals progresses. This allows for positive values of <i>interval</i>, whether looking into the past, or into the future. To get date ranges which are further into the past, recommend setting direction to &quot;-&quot;. If date ranges in the future are required, recommend setting direction to &quot;+&quot;. Default = &quot;-&quot;. Refer to the Illustrations section for examples.</p>
 
 <h2 id="get_error">get_error</h2>
 
@@ -329,7 +363,7 @@ Direction = "+", sliding window = 1
 
 <h1 id="DIAGNOSTICS">DIAGNOSTICS</h1>
 
-<p>Any errors detected may be retrieved via <i>$dr-</i>get_errors&gt;. Errors are accumulated as they are encountered. They are cleared only when <i>$dr-</i>clear_errors&gt; is invoked.</p>
+<p>Any errors detected may be retrieved via <i>$dr-&gt;get_errors</i>. Errors are accumulated as they are encountered. They are cleared only when <i>$dr-</i>clear_errors&gt; is invoked.</p>
 
 <h1 id="DEPENDENCIES">DEPENDENCIES</h1>
 
@@ -341,15 +375,24 @@ Direction = "+", sliding window = 1
 
 <p>T. Olenchuk</p>
 
-<h1 id="LICENSE-AND-COPYRIGHT">LICENSE AND COPYRIGHT</h1>
+<h1 id="LICENSE-COPYRIGHT-DISCLAIMER">LICENSE / COPYRIGHT / DISCLAIMER</h1>
+
+<p>This is free software, you may use it and distribute it under the same terms as Perl itself. There is no warranty of any kind, either expressed or implied.</p>
 
 <h1 id="LIMITATIONS">LIMITATIONS</h1>
 
-<p>The only allowed format for returned dates is &#39;YYYY-MM-DD&#39;.</p>
+<ul>
 
-<h1 id="DISCLAIMER">DISCLAIMER</h1>
+<li><p>The only allowed format for returned dates is &#39;YYYY-MM-DD&#39;.</p>
 
-<p>This package is licensed free of charge. There is no warranty of any kind, either expressed or implied.</p>
+</li>
+<li><p>&quot;Start day-of-month&quot; is only valid only for values 1-28. This was to avoid trying to use last-day-of-month, which becomes problematic for days with less than 31 days. Arguments could be made that, &quot;one month after the last day of January&quot; is Feb 28, or March 3, or even March 4 on a leap year.</p>
+
+</li>
+<li><p>Any date calculations not supported by Date::Calc are not supported here, such as &quot;3000 years ago&quot;.</p>
+
+</li>
+</ul>
 
 
 </body>

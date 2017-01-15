@@ -4,7 +4,7 @@ require_ok(Class::Accessor);
 require_ok(Date::Calc);
 
 can_ok('Date::Range', qw(new get_dates set_type get_type set_intervals 
-        get_intervals set_span get_span set_start_dow get_start_dow 
+        get_intervals set_span get_span set_start_day_of_week get_start_day_of_week 
         set_today_date get_today_date set_sliding_window get_sliding_window 
         set_direction get_direction set_error get_error clear_error 
         _set_default_parameters _set_passed_parameters _get_start_date 

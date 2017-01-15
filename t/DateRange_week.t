@@ -11,7 +11,7 @@ my $dr = Date::Range->new(today_date => $ref_date, type => 'WEEk');
 while (my $line = <main::DATA>) {
     chomp $line;
     my ($start_dow,$intervals,$span,$sliding_window,$direction,$test_start,$test_end,$test_last) = split /,/, $line;
-    $dr->set_start_dow($start_dow);
+    $dr->set_start_day_of_week($start_dow);
     $dr->set_intervals($intervals);
     $dr->set_span($span);
     $dr->set_sliding_window($sliding_window);
