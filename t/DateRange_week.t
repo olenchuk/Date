@@ -2,6 +2,8 @@ use Test::More qw(no_plan);
 use Date::Range;
 use Data::Dumper;
 use CodeRyte::DateRange;
+#use strict;
+
 
 my $ref_date = '2016-12-28';
 
@@ -19,9 +21,9 @@ while (my $line = <main::DATA>) {
     my $atts = "I=$intervals | S=$span | W=$sliding_window | D=$direction";
 
     my ($start,$end,$last) = $dr->get_dates;
-    cmp_ok($start,'eq',$test_start,"$type START $atts") or BAIL_OUT("Fail");
-    cmp_ok($end,'eq',$test_end,"$type END $atts") or BAIL_OUT("Fail");
-    cmp_ok($last,'eq',$test_last,"$type LAST $atts") or BAIL_OUT("Fail");
+    cmp_ok($start,'eq',$test_start,"$start_dow START $atts") or BAIL_OUT("Fail");
+    cmp_ok($end,'eq',$test_end,"$start_dow END $atts") or BAIL_OUT("Fail");
+    cmp_ok($last,'eq',$test_last,"$start_dow LAST $atts") or BAIL_OUT("Fail");
 
 }
 

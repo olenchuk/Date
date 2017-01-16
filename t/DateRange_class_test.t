@@ -1,7 +1,9 @@
 use Test::More qw(no_plan);
-require_ok(Date::Range);
-require_ok(Class::Accessor);
-require_ok(Date::Calc);
+use strict;
+
+require_ok('Date::Range');
+require_ok('Class::Accessor');
+require_ok('Date::Calc');
 
 can_ok('Date::Range', qw(new get_dates set_type get_type set_intervals 
         get_intervals set_span get_span set_start_day_of_week get_start_day_of_week 

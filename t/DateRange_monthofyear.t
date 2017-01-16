@@ -2,6 +2,8 @@ use Test::More qw(no_plan);
 use Date::Range;
 use Data::Dumper;
 use CodeRyte::DateRange;
+use strict;
+
 
 my $ref_date = '2016-08-28';
 

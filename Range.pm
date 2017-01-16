@@ -57,6 +57,7 @@ sub get_dates {
 
 sub set_type {
     my ($self, $type) = @_;
+    return 0 unless defined $type;
     $type = uc($type);
     my %valid_types = ('DAY' => 1 , 'WEEK' => 1 , 'MONTH' => 1 , 'QUARTER' => 1 , 'YEAR' => 1);
     unless ($valid_types{$type}) {
@@ -75,6 +76,7 @@ sub get_type {
 
 sub set_intervals {
     my ($self, $intervals) = @_;
+    return 0 unless defined $intervals;
     if ($intervals =~ /^(?:-)?\d+$/) {
         $self->intervals($intervals);
         return 1;
@@ -92,7 +94,8 @@ sub get_intervals {
 
 sub set_span {
     my ($self, $span) = @_;
-    if ($span =~ /^\d+$/) {
+    return 0 unless defined $span;
+    if ($span =~ /^\d+$/ and $span > 0) {
         $self->span($span);
         return 1;
     }
@@ -109,6 +112,7 @@ sub get_span {
 
 sub set_start_day_of_week {
     my ($self, $start_dow) = @_;
+    return 0 unless defined $start_dow;
     $start_dow = uc($start_dow);
     my %valid_dow = (
                        'MONDAY'    => 1,
@@ -137,7 +141,7 @@ sub get_start_day_of_week {
 
 sub set_start_day_of_month {
     my ($self, $start_dom) = @_;
-    return 0 unless $start_dom;
+    return 0 unless defined $start_dom;
     if ($start_dom =~ /^\d+$/ and $start_dom >= 1 and $start_dom <= 28) {
         $self->start_dom($start_dom);
     } else {
@@ -154,11 +158,11 @@ sub get_start_day_of_month {
 
 sub set_start_month_of_year {
     my ($self, $start_moy) = @_;
-    return 0 unless $start_moy;
+    return 0 unless defined $start_moy;
     if ($start_moy =~ /^\d+$/ and $start_moy >= 1 and $start_moy <= 12) {
         $self->start_moy($start_moy);
     } else {
-        $self->set_error("Invalid start day of month, \"$start_moy\"");
+        $self->set_error("Invalid start month of year, \"$start_moy\"");
         return 0;
     }
     return 1;
@@ -171,14 +175,20 @@ sub get_start_month_of_year {
 
 sub set_today_date {
     my ($self, @today) = @_;
+    return 0 unless @today;
     if (scalar @today) {
         my @verified_date = $self->_date_to_array(@today);
         if (@verified_date) {
             $self->today_date(@verified_date);
+            return 1;
         }
+        my $temp = join(":",@today);
+        $self->set_error("Today override failed validation, \"$temp\"");
+        return 0;
     }
     else {
         $self->today_date(Today);
+        return 1;
     }
 }
 
@@ -189,6 +199,7 @@ sub get_today_date {
 
 sub set_sliding_window {
     my ($self, $sliding_window) = @_;
+    return 0 unless defined $sliding_window;
     if ($sliding_window == 0 or $sliding_window == 1) {
         $self->sliding_window($sliding_window);
         return 1;
@@ -206,11 +217,13 @@ sub get_sliding_window {
 
 sub set_direction {
     my ($self,$direction) = @_;
+    return 0 unless defined $direction;
     if ($direction =~ /^[\+-]$/) {
         $self->direction($direction);
         return 1;
     }
     $self->set_error("Invalid direction argument, \"$direction\"");
+    return 0;
 }
 
 sub get_direction {
@@ -355,7 +368,16 @@ sub _get_start_dow_name {
 
 sub _set_print_format {
     my ($self, $format) = @_;
+    ## valid: %s, %d, '/', '-', ' ', ':'
+    my $validate = $format;
+    $validate =~ s/[\/\- :]//g;
+    $validate =~ s/%[0-9]*d//g;
+    if ($validate) {
+        $self->set_error("Suspect output format: \"$format\"");
+        return 0;
+    }
     $self->print_format($format);
+    return 1;
 }
 
 sub _get_print_format {
@@ -365,7 +387,6 @@ sub _get_print_format {
 
 sub _delta_ymd {
     my $self = shift;
-    my $type = $self->get_type;
     my $span = $self->get_span;
     my @single_delta = $self->_delta_per_period;
    my @total_delta = map { $span * $_ } @single_delta;
